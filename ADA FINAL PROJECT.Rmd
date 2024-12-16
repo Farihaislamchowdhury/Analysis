@@ -1,0 +1,329 @@
+---
+title: "ADA Final Project"
+author: "Fariha Chowdhury"
+date: "2024-12-11"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+### Install and load the packages
+```{r}
+library(tidyverse)
+library(dplyr)
+library(tidyr)
+```
+
+
+
+##loading the dataset
+```{r}
+data <- read.csv("/Users/farihaislamchowdhury/Desktop/Capstone/Fariha Capstone dataset.csv")
+```
+
+# View the first few rows of the dataset
+```{r}
+head(data)
+```
+
+
+# Check the structure of the dataset to understand variable types
+```{r}
+str(data)
+```
+
+
+# Summarize the dataset to get an overview of variable distributions
+```{r}
+summary(data)
+```
+
+
+### Check for missing values in each column
+```{r}
+colSums(is.na(data))
+```
+
+
+##separate dataset
+```{r}
+# Create a new dataset with the selected variables
+data_new <- data %>%
+ select(CHCCOPD3, EXERANY2, X_INCOMG1, X_AGE65YR, X_RFSMOK3)
+
+view(data_new)
+```
+
+##Recode COPD Diagnosis
+```{r}
+data_new <- data_new %>%
+  mutate(CHCCOPD3 = case_when(
+    CHCCOPD3 == 1 ~ 1,  # Yes becomes 1
+    CHCCOPD3 == 2 ~ 0,  # No becomes 0
+    TRUE ~ NA_real_      # Missing or invalid values become NA
+  ))
+```
+
+
+
+### Recode Physical Activity
+```{r}
+data_new <- data_new %>%
+  mutate(EXERANY2 = case_when(
+    EXERANY2 == 1 ~ "Yes",
+    EXERANY2 == 2 ~ "No",
+    TRUE ~ NA_character_
+  ))
+```
+
+# Recode Smoking Status
+```{r}
+data_new <- data_new %>%
+  mutate(X_RFSMOK3 = case_when(
+    X_RFSMOK3 == 1 ~ "Former Smoker",
+    X_RFSMOK3 == 2 ~ "Current Smoker",
+    TRUE ~ NA_character_
+  ))
+```
+
+
+
+
+
+
+
+
+# Recode _INCOMG1 variable##remember there is one new variable income category now which we will use
+```{r}
+data_new <- data_new %>%
+  mutate(X_INCOMG1 = case_when(
+    X_INCOMG1 %in% c(1, 2, 3, 4) ~ "<$50,000",  # Assign label for ≤$50,000
+    X_INCOMG1 %in% c(5, 6, 7) ~ ">$50,000",    # Assign label for >$50,000
+    X_INCOMG1 == 9 ~ NA_character_             # Assign NA for missing
+  ),
+  # Convert to factor with ordered levels
+  X_INCOMG1 = factor(X_INCOMG1, levels = c("<$50,000", ">$50,000"))
+  )
+```
+
+
+
+
+
+
+
+### Recode Gender(OMIT)--should consider as one of the limitation why we didnt chose gender since there are lots of NA's
+```{r}
+##data_new <- data %>%
+  mutate(BIRTHSEX = case_when(
+    BIRTHSEX == 1 ~ "Male",
+    BIRTHSEX == 2 ~ "Female",
+    TRUE ~ NA_character_
+  ))
+```
+
+
+
+
+
+
+### Recode _AGE65YR variable##remember there is one new variable age category now which we will use
+```{r}
+data_new <- data_new %>%
+  mutate(X_AGE65YR = case_when(
+    X_AGE65YR == 1 ~ 0,              # Ages 18-64 remain as 0
+    X_AGE65YR == 2 ~ 1,              # Ages 65 remain as 1
+    X_AGE65YR == 3 ~ NA_real_        # Missing/Refused/Don't know becomes NA
+  ),
+  # Convert to factor with meaningful labels
+  X_AGE65YR = factor(X_AGE65YR, levels = c(0, 1), labels = c("18-64", "65 or older"))
+  )
+
+# Verify the recoding
+table(data_new$X_AGE65YR, useNA = "ifany")
+```
+
+
+##checking for missing variables
+```{r}
+data_new <- na.omit(data_new)
+```
+
+
+
+
+###Renaming the variable names
+```{r}
+# Rename variables in data_new
+data_new <- data_new %>%
+  rename(
+    COPD_Diagnosis = CHCCOPD3,     # Rename CHCCOPD3 to COPD_Diagnosis
+    Physical_Activity = EXERANY2,  # Rename EXERANY2 to Physical_Activity
+    Income_Category = X_INCOMG1,   # Rename X_INCOMG1 to Income_Category
+    Age_Category = X_AGE65YR,      # Rename X_AGE65YR to Age_Category
+    Smoking_Status = X_RFSMOK3     # Rename X_RFSMOK3 to Smoking_Status
+  )
+
+# View the dataset with renamed variables
+head(data_new)
+```
+
+###check the column names
+```{r}
+colnames(data_new)
+```
+
+```{r}
+write.csv(data_new, "ADA_CLEANED_DATASET.csv", row.names = FALSE)
+```
+
+
+
+#####figure for BRFSS
+```{r}
+library(DiagrammeR)
+
+grViz("
+digraph flowchart {
+  
+  # Global node style
+  node [fontname = Helvetica, shape = rectangle, fontsize=10]
+  
+  # Define nodes
+  node1 [label = \"@@1\"]
+  node2 [label = \"@@2\"]
+  node3 [label = \"@@3\"]
+  node4 [label = \"@@4\"]
+  node5 [label = \"@@5\"]
+  node6 [label = \"@@6\"]
+  node7 [label = \"@@75\"]
+  
+  # Define edges
+  node1 -> node2 -> node3 -> node4 -> node5 -> node6 -> node7 
+}
+
+[1]: \"Original BRFSS dataset:\\nN = 433,323\"
+[2]: \"Randomly selected first 10,000 observations:\\nN = 10,000\"
+[3]: \"Recoded Variables:\\n- COPD Diagnosis: 0/1\\n- Physical Activity: Yes/No\\n- Income Category: < $50,000 or > $50,000\\n- Age: <65 or ≥65\\n- Smoking status: Former Smoker/Current Smoker\"
+[4]: \"Excluded invalid responses from all 5 variables (Refused, Not Sure)\"
+[5]: \"Excluded missing values from these 5 variables\"
+[6]: \"Total Excluded 2341 observations\"
+[7]: \"Final analytic dataset:\\nN = 7,659\"
+")
+```
+
+
+
+
+
+###table1 and other packages
+```{r}
+pacman::p_load(tidyverse, readr, table1, DiagrammeR, rsvg)
+```
+
+###table1
+```{r}
+table1(~ Physical_Activity + Income_Category + Age_Category + Smoking_Status | COPD_Diagnosis, data = data_new)
+```
+
+
+
+
+##Install and load package
+```{r}
+# Load the car package
+library(car)
+```
+
+##Assumption 1: Multicolinearity
+```{r}
+model_vif <- glm(COPD_Diagnosis ~ Physical_Activity + Income_Category + Age_Category + Smoking_Status,family = "binomial", 
+                data = data_new)
+vif_values <- vif(model_vif)
+print(vif_values)
+```
+
+
+##Assumption 2: Binary Dependent Variable
+```{r}
+table(data_new$COPD_Diagnosis)
+str(data_new$COPD_Diagnosis)
+```
+
+##Assumption:3 Hosmer-Lemeshow test to see model fit
+```{r}
+install.packages("ResourceSelection") # Run this if not already installed
+library(ResourceSelection)
+hoslem_test <- hoslem.test(data_new$COPD_Diagnosis, fitted(model))
+print(hoslem_test)
+```
+
+Interpretation: The logistic regression model appears to have a reasonably good fit to the data since the p-value is close to but still above 0.05.
+However, the result is borderline, so it may warrant further investigation (e.g., additional diagnostics or recalibration of the model).
+
+
+###Model for analysis(Logistic regression)
+```{r}
+# Fit the logistic regression model
+model <- glm(COPD_Diagnosis ~ Physical_Activity + Income_Category + Age_Category + Smoking_Status,
+             family = binomial, data = data_new)
+
+# Extract Odds Ratios, Confidence Intervals, and P-values
+odds_ratios <- exp(coef(model))  # Calculate Odds Ratios
+conf_int <- exp(confint(model))  # Calculate Confidence Intervals
+p_values <- coef(summary(model))[, "Pr(>|z|)"]  # Extract p-values
+
+# Format p-values to 3 decimal points, replacing very small values with "<0.001"
+p_values_rounded <- ifelse(p_values < 0.001, "<0.001", sprintf("%.3f", p_values))
+
+# Combine results into a table
+results <- data.frame(
+  Variable = rownames(coef(summary(model))),
+  Odds_Ratio = round(odds_ratios, 3),
+  CI_Lower = round(conf_int[, 1], 3),
+  CI_Upper = round(conf_int[, 2], 3),
+  P_Value = p_values_rounded
+)
+
+# Print the results table
+print(results)
+
+# Save the results table as a CSV file (optional)
+write.csv(results, "Logistic_Regression_Results.csv", row.names = FALSE)
+
+# Optional Visualization: Forest plot of odds ratios with confidence intervals
+library(ggplot2)
+results$Variable <- factor(results$Variable, levels = rev(results$Variable))  # Reverse the order for better plotting
+ggplot(results, aes(x = Odds_Ratio, y = Variable)) +
+  geom_point() +
+  geom_errorbarh(aes(xmin = CI_Lower, xmax = CI_Upper), height = 0.2) +
+  labs(title = "Odds Ratios with 95% Confidence Intervals", x = "Odds Ratio", y = "Variable") +
+  theme_minimal()
+```
+
+Physical activity: The odds of being diagnosed with COPD in individuals who did physical activity in last 30 days is 0.43 times lower than the odds of COPD in individuals who did not perform any physical activity in last 30 days (OR = 0.43, p = 0.000). This result is statistically significant.
+
+Income category: The odds of being diagnosed with COPD in individuals whose income level is more than 50,000/year is 0.47 times lower than the odds of COPD in individuals whose income level is less than 50,000/year (OR = 0.47, p = 0.000). This result is statistically significant.
+
+Age category: The odds of being diagnosed with COPD in individuals whose age is 65 years or older is 2.16 times higher than the odds of COPD in individuals whose whose age is less than 65 years (OR = 2.16, p = 0.000). This result is statistically significant.
+
+Smoking status: The odds of being diagnosed with COPD in individuals who is a former smoker is 0.33 times lower than the odds of COPD in individuals who is a current smoker. (OR = 0.33, p = 0.000). This result is statistically significant.
+
+
+
+########the end
+
+
+
+
+
+
+
+
+
+
+
+
+
